@@ -67,7 +67,7 @@ $btnGenerate.Add_Click({
     foreach ($file in $xmlFiles) {
         [xml]$xml = Get-Content $file.FullName
 
-        $diskNodes = $xml.SelectNodes("//entries[@name='disk']") |
+        $diskNodes = $xml.SelectNodes("//entries[@name='target']") |
                     Where-Object { $_.SelectSingleNode("entry[@name='interface_type']").InnerText -ne "USB" }
 
         if ($diskNodes.Count -gt $maxDiskCount) {
@@ -126,17 +126,17 @@ $btnGenerate.Add_Click({
         $version = $systemNode.SelectSingleNode("entry[@name='version']").InnerText
 
         # Get all non-USB disks
-        $diskNodes = $xml.SelectNodes("//entries[@name='disk']") |
-                    Where-Object { $_.SelectSingleNode("entry[@name='interface_type']").InnerText -ne "USB" }
+        $diskNodes = $xml.SelectNodes("//entries[@name='target']") |
+            Where-Object {
+                $iface = $_.SelectSingleNode("entry[@name='interface_type']")
+                $iface -and $iface.InnerText -ne "USB"
+            }
 
         # Extract their serial numbers
         $diskSerials = $diskNodes | ForEach-Object {
-            $_.SelectSingleNode("entry[@name='serial']").InnerText
+            $serialNode = $_.SelectSingleNode("entry[@name='serial']")
+            if ($serialNode) { $serialNode.InnerText }
         }
-
-        $erasureNode = $xml.SelectSingleNode("//blancco_erasure_report/entries[@name='erasures']/entries[@name='erasure']")
-        $state = $erasureNode.SelectSingleNode("entry[@name='state']").InnerText
-        $blanccoStatus = if ($state -eq "Successful") { "Green" } else { "Red" }
 
         for ($col=1; $col -le $headers.Count; $col++) {
             $worksheet.Cells.Item($row,$col).NumberFormat = "@"
@@ -157,7 +157,7 @@ $btnGenerate.Add_Click({
         }
 
         $cell = $worksheet.Cells.Item($row,3)
-        $cell.Interior.ColorIndex = if ($blanccoStatus -eq "Green") {4} else {3}
+        $cell.Interior.ColorIndex = 4
 
         $row++
     }
