@@ -68,12 +68,18 @@ $btnGenerate.Add_Click({
         [xml]$xml = Get-Content $file.FullName
 
         $diskNodes = $xml.SelectNodes("//entries[@name='target']") |
-                    Where-Object { $_.SelectSingleNode("entry[@name='interface_type']").InnerText -ne "USB" }
+            Where-Object {
+                $ifaceNode = $_.SelectSingleNode("entry[@name='interface_type']")
+                $iface = if ($ifaceNode) { $ifaceNode.InnerText.Trim() } else { "" }
+                $iface -notmatch '^(?i)usb'
+            }
 
         if ($diskNodes.Count -gt $maxDiskCount) {
             $maxDiskCount = $diskNodes.Count
         }
     }
+
+
     # Ask user where to save file
     $saveDialog = New-Object System.Windows.Forms.SaveFileDialog
     $saveDialog.Title = "Save Report As"
@@ -128,10 +134,10 @@ $btnGenerate.Add_Click({
         # Get all non-USB disks
         $diskNodes = $xml.SelectNodes("//entries[@name='target']") |
             Where-Object {
-                $iface = $_.SelectSingleNode("entry[@name='interface_type']")
-                $iface -and $iface.InnerText -ne "USB"
+                $ifaceNode = $_.SelectSingleNode("entry[@name='interface_type']")
+                $iface = if ($ifaceNode) { $ifaceNode.InnerText.Trim() } else { "" }
+                $iface -notmatch '^(?i)usb'
             }
-
         # Extract their serial numbers
         $diskSerials = $diskNodes | ForEach-Object {
             $serialNode = $_.SelectSingleNode("entry[@name='serial']")
